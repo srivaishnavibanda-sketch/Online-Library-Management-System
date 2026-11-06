@@ -1,0 +1,463 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Online Library Management System</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 0;
+            background: #f1f5f9;
+        }
+
+        header {
+            background: #1e3a8a;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        nav {
+            background: #172554;
+            padding: 15px;
+            text-align: center;
+        }
+
+        nav button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .container {
+            background: white;
+            padding: 25px;
+            margin: 25px auto;
+            width: 85%;
+            max-width: 900px;
+            border-radius: 10px;
+        }
+
+        input {
+            display: block;
+            width: 95%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .action {
+            background: #2563eb;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .delete {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 7px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #dbeafe;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Online Library Management System</h1>
+    <p>Manage Books and Students Easily</p>
+</header>
+
+<nav>
+    <button onclick="showSection('search')">Search Books</button>
+    <button onclick="showSection('admin')">Admin Login</button>
+    <button onclick="showSection('student')">Student Registration</button>
+    <button onclick="showSection('issue')">Issue / Return</button>
+</nav>
+
+<div class="container" id="search">
+    <h2>Search Books</h2>
+
+    <input type="text" id="searchInput"
+    placeholder="Enter book name"
+    onkeyup="searchBooks()">
+
+    <div id="searchResults"></div>
+</div>
+
+<div class="container hidden" id="admin">
+
+    <h2>Admin Login</h2>
+
+    <input type="text" id="username"
+    placeholder="Username">
+
+    <input type="password" id="password"
+    placeholder="Password">
+
+    <button class="action" onclick="login()">
+        Login
+    </button>
+
+    <div id="adminPanel" class="hidden">
+
+        <h2>Manage Books</h2>
+
+        <input type="hidden" id="editId">
+
+        <input type="text" id="bookName"
+        placeholder="Book Name">
+
+        <input type="text" id="author"
+        placeholder="Author">
+
+        <input type="number" id="quantity"
+        placeholder="Quantity">
+
+        <button class="action" onclick="saveBook()">
+            Save Book
+        </button>
+
+        <div id="bookTable"></div>
+
+    </div>
+</div>
+
+<div class="container hidden" id="student">
+
+    <h2>Student Registration</h2>
+
+    <input type="text" id="studentName"
+    placeholder="Student Name">
+
+    <input type="email" id="studentEmail"
+    placeholder="Email">
+
+    <input type="text" id="studentId"
+    placeholder="Student ID">
+
+    <button class="action" onclick="registerStudent()">
+        Register
+    </button>
+
+    <div id="studentTable"></div>
+
+</div>
+
+<div class="container hidden" id="issue">
+
+    <h2>Issue Book</h2>
+
+    <input type="text" id="issueStudent"
+    placeholder="Student ID">
+
+    <input type="number" id="issueBook"
+    placeholder="Book ID">
+
+    <button class="action" onclick="issueBook()">
+        Issue Book
+    </button>
+
+    <h2>Return Book</h2>
+
+    <input type="number" id="returnId"
+    placeholder="Issue ID">
+
+    <button class="action" onclick="returnBook()">
+        Return Book
+    </button>
+
+    <div id="issueTable"></div>
+
+</div>
+
+<script>
+
+let books = JSON.parse(localStorage.getItem("books")) || [
+    {id:1, name:"The Alchemist", author:"Paulo Coelho", total:5, available:5},
+    {id:2, name:"Wings of Fire", author:"A P J Abdul Kalam", total:4, available:4}
+];
+
+let students = JSON.parse(localStorage.getItem("students")) || [];
+let issues = JSON.parse(localStorage.getItem("issues")) || [];
+
+function saveData() {
+    localStorage.setItem("books", JSON.stringify(books));
+    localStorage.setItem("students", JSON.stringify(students));
+    localStorage.setItem("issues", JSON.stringify(issues));
+}
+
+function showSection(id) {
+    document.querySelectorAll(".container").forEach(section => {
+        section.classList.add("hidden");
+    });
+
+    document.getElementById(id).classList.remove("hidden");
+}
+
+function login() {
+    if (
+        document.getElementById("username").value === "admin" &&
+        document.getElementById("password").value === "admin123"
+    ) {
+        document.getElementById("adminPanel").classList.remove("hidden");
+        displayBooks();
+        alert("Admin Login Successful");
+    } else {
+        alert("Invalid Login");
+    }
+}
+
+function saveBook() {
+    let name = document.getElementById("bookName").value;
+    let author = document.getElementById("author").value;
+    let quantity = Number(document.getElementById("quantity").value);
+    let editId = Number(document.getElementById("editId").value);
+
+    if (!name || !author || !Number.isInteger(quantity) || quantity < 1) {
+        alert("Enter valid book details");
+        return;
+    }
+
+    if (editId) {
+        let book = books.find(b => b.id === editId);
+        let issued = book.total - book.available;
+
+        if (quantity < issued) {
+            alert("Quantity cannot be less than issued copies");
+            return;
+        }
+
+        book.name = name;
+        book.author = author;
+        book.total = quantity;
+        book.available = quantity - issued;
+
+    } else {
+        books.push({
+            id: Date.now(),
+            name: name,
+            author: author,
+            total: quantity,
+            available: quantity
+        });
+    }
+
+    clearForm();
+    saveData();
+    displayBooks();
+
+    alert("Book saved successfully");
+}
+
+function clearForm() {
+    document.getElementById("editId").value = "";
+    document.getElementById("bookName").value = "";
+    document.getElementById("author").value = "";
+    document.getElementById("quantity").value = "";
+}
+
+function displayBooks() {
+    let html = `
+        <table>
+        <tr>
+        <th>ID</th>
+        <th>Book</th>
+        <th>Author</th>
+        <th>Available</th>
+        <th>Actions</th>
+        </tr>`;
+
+    books.forEach(b => {
+        html += `
+        <tr>
+        <td>${b.id}</td>
+        <td>${b.name}</td>
+        <td>${b.author}</td>
+        <td>${b.available}/${b.total}</td>
+        <td>
+        <button onclick="editBook(${b.id})">Edit</button>
+        <button class="delete" onclick="deleteBook(${b.id})">Delete</button>
+        </td>
+        </tr>`;
+    });
+
+    html += "</table>";
+
+    document.getElementById("bookTable").innerHTML = html;
+    searchBooks();
+}
+
+function editBook(id) {
+    let b = books.find(x => x.id === id);
+
+    document.getElementById("editId").value = b.id;
+    document.getElementById("bookName").value = b.name;
+    document.getElementById("author").value = b.author;
+    document.getElementById("quantity").value = b.total;
+}
+
+function deleteBook(id) {
+    if (issues.some(i => i.bookId === id && !i.returned)) {
+        alert("Return issued copies before deleting");
+        return;
+    }
+
+    if (confirm("Delete this book?")) {
+        books = books.filter(b => b.id !== id);
+        saveData();
+        displayBooks();
+    }
+}
+
+function searchBooks() {
+    let q = document.getElementById("searchInput").value.toLowerCase();
+
+    let result = books.filter(b =>
+        b.name.toLowerCase().includes(q) ||
+        b.author.toLowerCase().includes(q)
+    );
+
+    document.getElementById("searchResults").innerHTML =
+        result.map(b =>
+            `<p>${b.name} - ${b.author} - Available: ${b.available}</p>`
+        ).join("");
+}
+
+function registerStudent() {
+    let name = document.getElementById("studentName").value;
+    let email = document.getElementById("studentEmail").value;
+    let id = document.getElementById("studentId").value;
+
+    if (!name || !email || !id) {
+        alert("Fill all student details");
+        return;
+    }
+
+    if (students.some(s => s.id === id)) {
+        alert("Student already registered");
+        return;
+    }
+
+    students.push({name, email, id});
+
+    saveData();
+    displayStudents();
+
+    alert("Student Registered Successfully");
+}
+
+function displayStudents() {
+    document.getElementById("studentTable").innerHTML =
+        students.map(s =>
+            `<p>${s.name} - ${s.email} - ${s.id}</p>`
+        ).join("");
+}
+
+function issueBook() {
+    let sid = document.getElementById("issueStudent").value;
+    let bid = Number(document.getElementById("issueBook").value);
+
+    let student = students.find(s => s.id === sid);
+    let book = books.find(b => b.id === bid);
+
+    if (!student) {
+        alert("Student not registered");
+        return;
+    }
+
+    if (!book || book.available <= 0) {
+        alert("Book unavailable");
+        return;
+    }
+
+    book.available--;
+
+    issues.push({
+        id: Date.now(),
+        studentId: sid,
+        bookId: bid,
+        due: Date.now() + 14 * 86400000,
+        returned: false
+    });
+
+    saveData();
+    displayIssues();
+
+    alert("Book Issued Successfully");
+}
+
+function returnBook() {
+    let id = Number(document.getElementById("returnId").value);
+    let issue = issues.find(i => i.id === id && !i.returned);
+
+    if (!issue) {
+        alert("Invalid Issue ID");
+        return;
+    }
+
+    let days = Math.max(
+        0,
+        Math.floor((Date.now() - issue.due) / 86400000)
+    );
+
+    let fine = days * 5;
+
+    issue.returned = true;
+    issue.fine = fine;
+
+    let book = books.find(b => b.id === issue.bookId);
+    if (book) book.available++;
+
+    saveData();
+    displayIssues();
+
+    alert("Book Returned. Fine: Rs. " + fine);
+}
+
+function displayIssues() {
+    document.getElementById("issueTable").innerHTML =
+        issues.map(i =>
+            `<p>Issue ID: ${i.id} | Student: ${i.studentId}
+            | Book ID: ${i.bookId}
+            | ${i.returned ? "Returned | Fine: Rs. " + (i.fine || 0) : "Issued"}</p>`
+        ).join("");
+}
+
+saveData();
+displayBooks();
+displayStudents();
+displayIssues();
+
+</script>
+
+</body>
+</html>
